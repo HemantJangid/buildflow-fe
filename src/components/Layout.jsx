@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState, Suspense } from "react";
+import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
+import { PageLoadingSpinner } from "@/components/ui/loading-spinner";
 import { Sun, Moon, Download, Share, MoreVertical } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PERMISSIONS } from "@/lib/constants";
 
-const Layout = ({ children }) => {
+const Layout = () => {
   const { user, logout, hasPermission, getRoleName, permissions } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showBanner, canInstall, promptInstall, dismissBanner } = usePWAInstall();
@@ -715,7 +716,9 @@ const Layout = ({ children }) => {
                   </div>
                 </div>
               )}
-              {children}
+              <Suspense fallback={<PageLoadingSpinner />}>
+                <Outlet />
+              </Suspense>
             </div>
           </main>
         </div>

@@ -1,4 +1,3 @@
-import Layout from './Layout';
 import PageHeader from './PageHeader';
 import { PageLoadingSpinner } from './ui/loading-spinner';
 
@@ -12,22 +11,16 @@ const PageWrapper = ({
   showHeader = true,
 }) => {
   if (loading) {
-    return (
-      <Layout>
-        <PageLoadingSpinner />
-      </Layout>
-    );
+    return <PageLoadingSpinner />;
   }
 
   return (
-    <Layout>
-      <div className="space-y-4">
-        {showHeader && (title || headerAction || backButton) && (
-          <PageHeader title={title} subtitle={subtitle} action={headerAction} backButton={backButton} />
-        )}
-        {children}
-      </div>
-    </Layout>
+    <div className="space-y-4">
+      {showHeader && (title || headerAction || backButton) && (
+        <PageHeader title={title} subtitle={subtitle} action={headerAction} backButton={backButton} />
+      )}
+      {children}
+    </div>
   );
 };
 

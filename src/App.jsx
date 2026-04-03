@@ -1,9 +1,10 @@
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { OrganizationSettingsProvider } from "./context/OrganizationSettingsContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Layout from "./components/Layout";
 import { Toaster } from "./components/ui/sonner";
 import { PageLoadingSpinner } from "./components/ui/loading-spinner";
 import { PERMISSIONS } from "./lib/constants";
@@ -28,183 +29,174 @@ const Expenses = lazy(() => import("./pages/Expenses"));
 const Revenue = lazy(() => import("./pages/Revenue"));
 const OrganizationSettings = lazy(() => import("./pages/OrganizationSettings"));
 
+// Checks auth and renders the shared Layout (with Outlet for nested routes)
+const AppLayout = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <PageLoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Layout />;
+};
+
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <OrganizationSettingsProvider>
-        <BrowserRouter>
-          <Toaster />
-          <Suspense
-            fallback={
-              <div className="min-h-screen flex items-center justify-center">
-                <PageLoadingSpinner />
-              </div>
-            }
-          >
+          <BrowserRouter>
+            <Toaster />
             <Routes>
-              {/* Public Routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
+                {/* Public Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
 
-              {/* Protected Routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Protected Routes - Layout mounted once, only content swaps */}
+                <Route element={<AppLayout />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
 
-              <Route
-                path="/attendance/clock-in"
-                element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.ATTENDANCE_CLOCK_IN}
-                  >
-                    <ClockIn />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/attendance/clock-in"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.ATTENDANCE_CLOCK_IN}>
+                        <ClockIn />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              <Route
-                path="/users"
-                element={
-                  <ProtectedRoute requiredPermission={PERMISSIONS.USERS_READ}>
-                    <Users />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/users"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.USERS_READ}>
+                        <Users />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              <Route
-                path="/projects"
-                element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.PROJECTS_READ}
-                  >
-                    <Projects />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/projects/:projectId/members"
-                element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.PROJECTS_READ}
-                  >
-                    <ProjectMembersPage />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/projects"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.PROJECTS_READ}>
+                        <Projects />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              <Route
-                path="/expenses"
-                element={
-                  <ProtectedRoute
-                    requiredAnyPermission={[
-                      PERMISSIONS.EXPENSES_CREATE,
-                      PERMISSIONS.EXPENSES_READ_OWN,
-                      PERMISSIONS.EXPENSES_READ_ALL,
-                    ]}
-                  >
-                    <Expenses />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/projects/:projectId/members"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.PROJECTS_READ}>
+                        <ProjectMembersPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              <Route
-                path="/revenue"
-                element={
-                  <ProtectedRoute requiredPermission={PERMISSIONS.REVENUE_READ}>
-                    <Revenue />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/expenses"
+                    element={
+                      <ProtectedRoute
+                        requiredAnyPermission={[
+                          PERMISSIONS.EXPENSES_CREATE,
+                          PERMISSIONS.EXPENSES_READ_OWN,
+                          PERMISSIONS.EXPENSES_READ_ALL,
+                        ]}
+                      >
+                        <Expenses />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              <Route
-                path="/reports"
-                element={
-                  <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS_READ}>
-                    <Reports />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/revenue"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.REVENUE_READ}>
+                        <Revenue />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              <Route
-                path="/organization/settings"
-                element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.SYSTEM_SETTINGS}
-                  >
-                    <OrganizationSettings />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/reports"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS_READ}>
+                        <Reports />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              <Route
-                path="/roles"
-                element={
-                  <ProtectedRoute requiredPermission={PERMISSIONS.ROLES_READ}>
-                    <Roles />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/organization/settings"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.SYSTEM_SETTINGS}>
+                        <OrganizationSettings />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              <Route
-                path="/project-members"
-                element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.PROJECT_MEMBERS_READ}
-                  >
-                    <ProjectMembers />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/roles"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.ROLES_READ}>
+                        <Roles />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              <Route
-                path="/change-requests"
-                element={
-                  <ProtectedRoute
-                    requiredAnyPermission={[
-                      PERMISSIONS.PROJECT_MEMBERS_READ,
-                      PERMISSIONS.ATTENDANCE_UPDATE,
-                    ]}
-                  >
-                    <ChangeRequests />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/project-members"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.PROJECT_MEMBERS_READ}>
+                        <ProjectMembers />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              <Route
-                path="/attendance/report"
-                element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.ATTENDANCE_READ_ALL}
-                  >
-                    <AttendanceReport />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/attendance/daily-sheet"
-                element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.ATTENDANCE_READ_ALL}
-                  >
-                    <DailyAttendanceSheet />
-                  </ProtectedRoute>
-                }
-              />
+                  <Route
+                    path="/change-requests"
+                    element={
+                      <ProtectedRoute
+                        requiredAnyPermission={[
+                          PERMISSIONS.PROJECT_MEMBERS_READ,
+                          PERMISSIONS.ATTENDANCE_UPDATE,
+                        ]}
+                      >
+                        <ChangeRequests />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              {/* Redirect root to dashboard */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route
+                    path="/attendance/report"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.ATTENDANCE_READ_ALL}>
+                        <AttendanceReport />
+                      </ProtectedRoute>
+                    }
+                  />
 
-              {/* Catch all - redirect to dashboard */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
+                  <Route
+                    path="/attendance/daily-sheet"
+                    element={
+                      <ProtectedRoute requiredPermission={PERMISSIONS.ATTENDANCE_READ_ALL}>
+                        <DailyAttendanceSheet />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                </Route>
+              </Routes>
+          </BrowserRouter>
         </OrganizationSettingsProvider>
       </AuthProvider>
     </ThemeProvider>
