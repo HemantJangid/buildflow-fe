@@ -234,7 +234,6 @@ const Roles = () => {
     <PageWrapper
       title="Roles & permissions"
       subtitle="Manage user roles and their permissions"
-      loading={loading && roles.length === 0}
       headerAction={
         <Button onClick={() => setShowForm(!showForm)}>
           {showForm ? "Cancel" : "Create role"}
@@ -248,8 +247,8 @@ const Roles = () => {
         size="2xl"
       >
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 <FormField
                   name="name"
                   label="Role name"

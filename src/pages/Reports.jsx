@@ -3,12 +3,10 @@ import { reportAPI, authAPI, projectAPI } from "@/services/api";
 import PageWrapper from "@/components/PageWrapper";
 import FormActions from "@/components/FormActions";
 import DateRangeSelect from "@/components/DateRangeSelect";
-import { FormSelect } from "@/components/ui/form-select";
+import { FormSelectCompact } from "@/components/ui/form-select";
 import DataTable from "@/components/ui/data-table";
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
@@ -16,14 +14,15 @@ import { cn } from "@/lib/utils";
 import { useMessage } from "@/hooks/useMessage";
 import { useOrganizationSettings } from "@/context/OrganizationSettingsContext";
 import logger from "@/lib/logger";
-import { ROLES, REPORT_TYPE, REPORT_TYPE_OPTIONS } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
+import { ROLES, REPORT_TYPE, REPORT_TYPE_OPTIONS, PERMISSIONS } from "@/lib/constants";
+import { useAuth } from "@/context/AuthContext";
 
 const Reports = () => {
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedProject, setSelectedProject] = useState("");
+  const [plProjectFilter, setPlProjectFilter] = useState("");
   const [dateRange, setDateRange] = useState({ startDate: "", endDate: "" });
   const [datePreset, setDatePreset] = useState("custom");
   const [report, setReport] = useState(null);
@@ -31,6 +30,8 @@ const Reports = () => {
   const [loading, setLoading] = useState(false);
   const { showError, clearMessage } = useMessage();
   const { currency: orgCurrency } = useOrganizationSettings();
+  const { hasPermission } = useAuth();
+  const canViewPL = hasPermission(PERMISSIONS.REVENUE_READ);
 
   useEffect(() => {
     fetchData();
@@ -72,10 +73,15 @@ const Reports = () => {
       if (dateRange.startDate) params.startDate = dateRange.startDate;
       if (dateRange.endDate) params.endDate = dateRange.endDate;
 
-      const response =
-        reportType === REPORT_TYPE.USER
-          ? await reportAPI.getUserCost(selectedUser, params)
-          : await reportAPI.getProjectReport(selectedProject, params);
+      let response;
+      if (reportType === REPORT_TYPE.USER) {
+        response = await reportAPI.getUserCost(selectedUser, params);
+      } else if (reportType === REPORT_TYPE.PROJECT) {
+        response = await reportAPI.getProjectReport(selectedProject, params);
+      } else {
+        if (plProjectFilter) params.projectId = plProjectFilter;
+        response = await reportAPI.getProfitLoss(params);
+      }
 
       setReport(response.data.data);
     } catch (error) {
@@ -147,64 +153,68 @@ const Reports = () => {
       subtitle="Generate cost and attendance reports"
     >
       <Card>
-        <CardHeader className="pb-1">
-          <CardTitle className="text-base">Report settings</CardTitle>
-        </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {/* Report type selector - stack on mobile, equal width on desktop */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Report type
-              </label>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {REPORT_TYPE_OPTIONS.map((option) => (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      "h-auto py-3 px-4 rounded-lg text-left flex flex-col items-start",
-                      reportType === option.value
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-muted/30 text-muted-foreground hover:bg-muted/50",
-                    )}
-                    onClick={() => setReportType(option.value)}
-                  >
-                    <span className="font-medium">{option.label}</span>
-                    <p className="text-sm mt-0.5 opacity-85">
-                      {option.description}
-                    </p>
-                  </Button>
-                ))}
-              </div>
+            <p className="font-semibold text-base">Report settings</p>
+            {/* Report type selector — compact tab strip */}
+            <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-muted/40 p-1 w-fit">
+              {REPORT_TYPE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => { setReportType(option.value); setReport(null); }}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    reportType === option.value
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
 
-            {/* Filters - stack on mobile, row on desktop; items-end so all inputs share one baseline */}
-            <div className="flex flex-col sm:gap-2 md:gap-3 sm:flex-row sm:items-end">
-              <div className="w-full sm:w-[200px]">
-                {reportType === REPORT_TYPE.USER ? (
-                  <FormSelect
-                    name="user"
-                    label="User"
-                    value={selectedUser}
-                    onValueChange={setSelectedUser}
-                    options={users}
-                    placeholder="Choose user"
-                    labelClassName="text-sm font-medium"
-                  />
-                ) : (
-                  <FormSelect
-                    name="project"
-                    label="Project"
-                    value={selectedProject}
-                    onValueChange={setSelectedProject}
+            {/* Filters */}
+            <div className="flex flex-wrap items-end gap-3">
+              {reportType !== REPORT_TYPE.PROFIT_LOSS && (
+                <div className="w-[200px]">
+                  {reportType === REPORT_TYPE.USER ? (
+                    <FormSelectCompact
+                      name="user"
+                      label="User"
+                      value={selectedUser}
+                      onChange={(e) => setSelectedUser(e.target.value)}
+                      options={users}
+                      placeholder="Choose user"
+                      includeAll={false}
+                    />
+                  ) : (
+                    <FormSelectCompact
+                      name="project"
+                      label="Project"
+                      value={selectedProject}
+                      onChange={(e) => setSelectedProject(e.target.value)}
+                      options={projects}
+                      placeholder="Choose project"
+                      includeAll={false}
+                    />
+                  )}
+                </div>
+              )}
+              {reportType === REPORT_TYPE.PROFIT_LOSS && (
+                <div className="w-[200px]">
+                  <FormSelectCompact
+                    name="plProject"
+                    label="Project (optional)"
+                    value={plProjectFilter}
+                    onChange={(e) => setPlProjectFilter(e.target.value)}
                     options={projects}
-                    placeholder="Choose project"
-                    labelClassName="text-sm font-medium"
+                    placeholder="All projects"
+                    includeAll
                   />
-                )}
-              </div>
+                </div>
+              )}
               <DateRangeSelect
                 startDate={dateRange.startDate}
                 endDate={dateRange.endDate}
@@ -320,6 +330,114 @@ const Reports = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Profit & Loss Report */}
+      {report && reportType === REPORT_TYPE.PROFIT_LOSS && (
+        <div className="space-y-4">
+          <h2 className="text-base font-semibold text-foreground">
+            Profit &amp; Loss
+          </h2>
+          {report.totals && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xs text-muted-foreground">Total Revenue</p>
+                <p className="text-xl font-bold text-foreground tabular-nums">
+                  {orgCurrency} {Number(report.totals.totalRevenue ?? 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xs text-muted-foreground">Total Expenses</p>
+                <p className="text-xl font-bold text-foreground tabular-nums">
+                  {orgCurrency} {Number(report.totals.totalExpenses ?? 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xs text-muted-foreground">Net Profit</p>
+                <p
+                  className={cn(
+                    "text-xl font-bold tabular-nums",
+                    report.totals.netProfit >= 0
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-destructive",
+                  )}
+                >
+                  {orgCurrency} {Number(report.totals.netProfit ?? 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xs text-muted-foreground">Avg Margin</p>
+                <p
+                  className={cn(
+                    "text-xl font-bold tabular-nums",
+                    report.totals.avgMargin >= 0
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-destructive",
+                  )}
+                >
+                  {Number(report.totals.avgMargin ?? 0).toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          )}
+          <DataTable
+            columns={[
+              {
+                key: "project",
+                label: "Project",
+                render: (r) => r.projectName || r.projectId,
+              },
+              {
+                key: "revenue",
+                label: "Revenue",
+                className: "font-medium",
+                render: (r) =>
+                  `${orgCurrency} ${Number(r.revenue ?? 0).toFixed(2)}`,
+              },
+              {
+                key: "expenses",
+                label: "Expenses",
+                className: "text-muted-foreground",
+                render: (r) =>
+                  `${orgCurrency} ${Number(r.expenses ?? 0).toFixed(2)}`,
+              },
+              {
+                key: "netProfit",
+                label: "Net Profit",
+                render: (r) => (
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      r.netProfit >= 0
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-destructive",
+                    )}
+                  >
+                    {orgCurrency} {Number(r.netProfit ?? 0).toFixed(2)}
+                  </span>
+                ),
+              },
+              {
+                key: "margin",
+                label: "Margin %",
+                render: (r) => (
+                  <span
+                    className={cn(
+                      r.margin >= 0
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-destructive",
+                    )}
+                  >
+                    {Number(r.margin ?? 0).toFixed(1)}%
+                  </span>
+                ),
+              },
+            ]}
+            data={report.breakdown || []}
+            emptyMessage="No data found for the selected period."
+            rowKey={(r) => r.projectId}
+          />
         </div>
       )}
 

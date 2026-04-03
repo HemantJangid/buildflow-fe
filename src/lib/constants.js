@@ -53,6 +53,10 @@ export const PERMISSIONS = {
   ROLES_UPDATE: "roles:update",
   ROLES_DELETE: "roles:delete",
   SYSTEM_SETTINGS: "system:settings",
+  REVENUE_CREATE: "revenue:create",
+  REVENUE_READ: "revenue:read",
+  REVENUE_UPDATE: "revenue:update",
+  REVENUE_DELETE: "revenue:delete",
 };
 
 // Attendance mark statuses (daily sheet: Present / Absent / Partial)
@@ -95,10 +99,22 @@ export const CHANGE_REQUEST_STATUS_OPTIONS = [
   { value: CHANGE_REQUEST_STATUS.REJECTED, label: "Rejected" },
 ];
 
-// Report type (Reports page: user cost vs project report)
+// Revenue categories and statuses (must match backend Revenue model)
+export const REVENUE_CATEGORIES = [
+  "Contract Payment",
+  "Milestone Payment",
+  "Advance Payment",
+  "Retention Release",
+  "Other",
+];
+
+export const REVENUE_STATUS = ["Draft", "Invoiced", "Received", "Void"];
+
+// Report type (Reports page: user cost vs project report vs P&L)
 export const REPORT_TYPE = {
   USER: "user",
   PROJECT: "project",
+  PROFIT_LOSS: "profitLoss",
 };
 
 export const REPORT_TYPE_OPTIONS = [
@@ -111,6 +127,11 @@ export const REPORT_TYPE_OPTIONS = [
     value: REPORT_TYPE.PROJECT,
     label: "Project Report",
     description: "Attendance summary by project",
+  },
+  {
+    value: REPORT_TYPE.PROFIT_LOSS,
+    label: "Profit & Loss",
+    description: "Revenue vs expenses per project",
   },
 ];
 

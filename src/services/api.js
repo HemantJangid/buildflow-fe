@@ -80,6 +80,8 @@ export const projectAPI = {
     api.get(`/projects/${projectId}/members`, { params }),
   addMember: (projectId, data) =>
     api.post(`/projects/${projectId}/members`, data),
+  addMembersBulk: (projectId, data) =>
+    api.post(`/projects/${projectId}/members/bulk`, data),
   removeMember: (projectId, userId) =>
     api.delete(`/projects/${projectId}/members/${userId}`),
 };
@@ -90,6 +92,7 @@ export const reportAPI = {
     api.get(`/reports/user-cost/${userId}`, { params }),
   getProjectReport: (projectId, params) =>
     api.get(`/reports/project/${projectId}`, { params }),
+  getProfitLoss: (params) => api.get("/reports/profit-loss", { params }),
 };
 
 // Roles API
@@ -137,6 +140,18 @@ export const expenseAPI = {
   getSummary: (params) => api.get("/expenses/summary", { params }),
   export: (params) =>
     api.get("/expenses/export", { params, responseType: "blob" }),
+};
+
+// Revenue API (list is paginated: response.data.pagination = { total, page, limit, totalPages })
+export const revenueAPI = {
+  getAll: (params) => api.get("/revenue", { params }),
+  getById: (id) => api.get(`/revenue/${id}`),
+  create: (data) => api.post("/revenue", data),
+  update: (id, data) => api.put(`/revenue/${id}`, data),
+  delete: (id) => api.delete(`/revenue/${id}`),
+  getSummary: (params) => api.get("/revenue/summary", { params }),
+  export: (params) =>
+    api.get("/revenue/export", { params, responseType: "blob" }),
 };
 
 // Organization settings API (org admin only)

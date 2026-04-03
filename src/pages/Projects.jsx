@@ -248,7 +248,6 @@ const Projects = () => {
     <PageWrapper
       title="Projects"
       subtitle="Manage project sites and geofences"
-      loading={loading && projects.length === 0}
       headerAction={
         <Button onClick={() => setShowForm(!showForm)}>
           {showForm ? "Cancel" : "Add Project"}
@@ -262,7 +261,7 @@ const Projects = () => {
         size="lg"
       >
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
+          <div className="space-y-2.5">
             <FormField
               name="name"
               label="Project name"
@@ -271,7 +270,7 @@ const Projects = () => {
               placeholder="Enter project name"
               required
             />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
               <FormField
                 name="lat"
                 label="Latitude"

@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { projectAPI } from "@/services/api";
+import { projectAPI, authAPI } from "@/services/api";
 import PageWrapper from "@/components/PageWrapper";
 import DataTable from "@/components/ui/data-table";
-import { FormSelect } from "@/components/ui/form-select";
+import { AsyncSearchCombobox } from "@/components/ui/async-search-combobox";
 import { Button } from "@/components/ui/button";
 import Modal from "@/components/Modal";
 import FormActions from "@/components/FormActions";
@@ -16,10 +16,10 @@ export default function ProjectMembersPage() {
   const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [members, setMembers] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [membersLoading, setMembersLoading] = useState(true);
-  const [addMemberUserId, setAddMemberUserId] = useState("");
+  const [addMemberSelected, setAddMemberSelected] = useState([]);
+  const [addMemberSubmitting, setAddMemberSubmitting] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -71,47 +71,78 @@ export default function ProjectMembersPage() {
     if (projectId) fetchMembers(1, PAGINATION.DEFAULT_PAGE_SIZE);
   }, [projectId]);
 
-  useEffect(() => {
-    if (!projectId) {
-      setUsers([]);
-      return;
-    }
-    const loadUsers = async () => {
-      try {
-        const res = await projectAPI.getAvailableUsers(projectId);
-        setUsers(res.data.data || []);
-      } catch (e) {
-        logger.error("Error fetching available users", e);
-        setUsers([]);
-      }
-    };
-    loadUsers();
-  }, [projectId]);
-
   const handlePageChange = (page) => {
     fetchMembers(page, pagination.limit);
   };
 
-  const handleAddMember = async (e) => {
-    e?.preventDefault();
-    if (!addMemberUserId || !projectId) return;
-    setMembersLoading(true);
+  const fetchUserOptions = useCallback(
+    async (query) => {
+      try {
+        const res = await authAPI.getAllUsers({
+          search: query,
+          searchBy: "name",
+          limit: 50,
+          page: 1,
+          status: "active",
+        });
+        const data = res.data?.data ?? [];
+        const pagination = res.data?.pagination ?? {};
+        const memberIds = new Set(
+          members.map((m) => (m.userId?._id || m.userId)?.toString())
+        );
+        const options = data
+          .filter((u) => {
+            const id = (u.id ?? u._id)?.toString();
+            return id && !memberIds.has(id);
+          })
+          .map((u) => ({
+            id: u.id ?? u._id,
+            name: u.name ?? "—",
+            email: u.email ?? "",
+          }));
+        return {
+          options,
+          total: pagination.total ?? options.length,
+        };
+      } catch (e) {
+        logger.error("Error fetching users for add member", e);
+        return { options: [], total: 0 };
+      }
+    },
+    [members]
+  );
+
+  const handleBulkAddMembers = async () => {
+    if (!projectId || addMemberSelected.length === 0) return;
+    setAddMemberSubmitting(true);
     try {
-      await projectAPI.addMember(projectId, { userId: addMemberUserId });
-      showSuccess("Member added");
-      setAddMemberUserId("");
+      const userIds = addMemberSelected.map((u) => u.id ?? u._id);
+      const res = await projectAPI.addMembersBulk(projectId, { userIds });
+      const data = res.data?.data ?? {};
+      const added = data.added ?? 0;
+      const skipped = data.skipped ?? 0;
+      if (added > 0) {
+        showSuccess(
+          skipped > 0
+            ? `${added} member(s) added. ${skipped} skipped (already member or invalid).`
+            : `${added} member(s) added.`
+        );
+      } else if (skipped > 0) {
+        showSuccess("No new members added (all already members or invalid).");
+      }
+      setAddMemberSelected([]);
       setShowAddMemberModal(false);
       fetchMembers(pagination.page, pagination.limit);
     } catch (e) {
-      showApiError(e, "Failed to add member");
+      showApiError(e, "Failed to add members");
     } finally {
-      setMembersLoading(false);
+      setAddMemberSubmitting(false);
     }
   };
 
   const handleCloseAddMemberModal = () => {
     setShowAddMemberModal(false);
-    setAddMemberUserId("");
+    setAddMemberSelected([]);
   };
 
   const handleRemoveMember = async (userId) => {
@@ -191,21 +222,10 @@ export default function ProjectMembersPage() {
     );
   }
 
-  const currentMemberIds = members.map(
-    (m) => (m.userId?._id || m.userId)?.toString()
-  );
-  const userOptions = users
-    .filter((u) => !currentMemberIds.includes(u._id?.toString()))
-    .map((u) => ({
-      _id: u._id,
-      name: `${u.name || "—"} (${u.email || ""})`,
-    }));
-
   return (
     <PageWrapper
       title={project ? `Members: ${project.name}` : "Project members"}
       subtitle={project ? "Add or remove project members" : ""}
-      loading={loading && !project}
       backButton={
         <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>
           ← Back
@@ -215,27 +235,39 @@ export default function ProjectMembersPage() {
       <Modal
         open={showAddMemberModal}
         onClose={handleCloseAddMemberModal}
-        title="Add member to project"
+        title="Add members to project"
         size="md"
       >
-        <form onSubmit={handleAddMember}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleBulkAddMembers();
+          }}
+        >
           <div className="space-y-4">
-            <FormSelect
-              name="addMember"
-              label="Select user"
-              value={addMemberUserId}
-              onValueChange={setAddMemberUserId}
-              options={userOptions}
-              placeholder="Select user to add"
-              required
+            <AsyncSearchCombobox
+              fetchOptions={fetchUserOptions}
+              value={addMemberSelected}
+              onChange={setAddMemberSelected}
+              getOptionValue={(opt) => (opt?.id ?? opt?._id)?.toString() ?? ""}
+              getOptionLabel={(opt) =>
+                opt?.email ? `${opt.name ?? "—"} (${opt.email})` : (opt?.name ?? "—")
+              }
+              placeholder="Search by name (min 3 characters)..."
+              minSearchLength={3}
+              debounceMs={300}
+              limit={50}
+              emptyMessage="No users found."
+              minLengthMessage="Type at least 3 characters to search."
             />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">
             <FormActions
               onCancel={handleCloseAddMemberModal}
-              submitLabel="Add member"
-              loading={membersLoading}
+              submitLabel={addMemberSelected.length > 0 ? `Add ${addMemberSelected.length} members` : "Add members"}
+              loading={addMemberSubmitting}
               loadingLabel="Adding…"
+              disabled={addMemberSelected.length === 0}
             />
           </div>
         </form>
@@ -257,7 +289,7 @@ export default function ProjectMembersPage() {
         <DataTable
           columns={columns}
           data={members}
-          loading={membersLoading}
+          loading={loading || membersLoading}
           emptyMessage="No members yet. Click 'Add member' to get started."
           rowKey={(m) => m._id}
           pagination={pagination}

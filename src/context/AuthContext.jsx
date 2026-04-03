@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
 import logger from '../lib/logger';
 import { ROLES } from '../lib/constants';
@@ -16,6 +16,12 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  }, []);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -38,9 +44,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     initAuth();
-  }, []);
+  }, [logout]);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const response = await authAPI.login({ email, password });
     const { token, ...userData } = response.data.data;
 
@@ -49,9 +55,9 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
 
     return userData;
-  };
+  }, []);
 
-  const signup = async (data) => {
+  const signup = useCallback(async (data) => {
     const response = await authAPI.signup(data);
     const { token, ...userData } = response.data.data;
 
@@ -60,50 +66,58 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
 
     return userData;
-  };
+  }, []);
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-  };
+  const hasPermission = useCallback(
+    (permission) => {
+      if (!user) return false;
+      if (user.role?.name === ROLES.ADMIN) return true;
+      return user.permissions?.includes(permission);
+    },
+    [user]
+  );
 
-  // Check if user has a specific permission
-  const hasPermission = (permission) => {
-    if (!user) return false;
-    // Admin has all permissions
-    if (user.role?.name === ROLES.ADMIN) return true;
-    return user.permissions?.includes(permission);
-  };
+  const hasAnyPermission = useCallback(
+    (...permissions) => {
+      if (!user) return false;
+      if (user.role?.name === ROLES.ADMIN) return true;
+      return permissions.some((p) => user.permissions?.includes(p));
+    },
+    [user]
+  );
 
-  // Check if user has any of the specified permissions
-  const hasAnyPermission = (...permissions) => {
-    if (!user) return false;
-    if (user.role?.name === ROLES.ADMIN) return true;
-    return permissions.some((p) => user.permissions?.includes(p));
-  };
+  const getRoleName = useCallback(() => user?.role?.name || '', [user]);
 
-  // Get role name
-  const getRoleName = () => user?.role?.name || '';
-
-  const value = {
-    user,
-    loading,
-    login,
-    signup,
-    logout,
-    isAuthenticated: !!user,
-    organizationId: user?.organizationId,
-    organizationName: user?.organizationName,
-    isAdmin: user?.role?.name === ROLES.ADMIN,
-    isSupervisor: user?.role?.name === ROLES.SUPERVISOR,
-    isWorker: user?.role?.name === ROLES.WORKER,
-    isManager: user?.role?.name === ROLES.MANAGER, // custom role
-    hasPermission,
-    hasAnyPermission,
-    getRoleName,
-    permissions: user?.permissions || [],
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      loading,
+      login,
+      signup,
+      logout,
+      isAuthenticated: !!user,
+      organizationId: user?.organizationId,
+      organizationName: user?.organizationName,
+      isAdmin: user?.role?.name === ROLES.ADMIN,
+      isSupervisor: user?.role?.name === ROLES.SUPERVISOR,
+      isWorker: user?.role?.name === ROLES.WORKER,
+      isManager: user?.role?.name === ROLES.MANAGER,
+      hasPermission,
+      hasAnyPermission,
+      getRoleName,
+      permissions: user?.permissions || [],
+    }),
+    [
+      user,
+      loading,
+      login,
+      signup,
+      logout,
+      hasPermission,
+      hasAnyPermission,
+      getRoleName,
+    ]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

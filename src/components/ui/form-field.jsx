@@ -71,7 +71,7 @@ export const FormFieldCompact = ({
   const inputId = id || name;
 
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div className={cn("space-y-2", className)}>
       {label && (
         <Label htmlFor={inputId} className="text-xs text-muted-foreground">
           {label}

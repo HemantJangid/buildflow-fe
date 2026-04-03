@@ -1,9 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import {
-  attendanceReportAPI,
-  projectAPI,
-  authAPI,
-} from "@/services/api";
+import { attendanceReportAPI, projectAPI, authAPI } from "@/services/api";
 import PageWrapper from "@/components/PageWrapper";
 import StatCard from "@/components/StatCard";
 import FilterCard from "@/components/FilterCard";
@@ -14,7 +10,11 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { useMessage } from "@/hooks/useMessage";
 import { useFilters } from "@/hooks/useFilters";
 import { formatDate, formatTime, getDefaultDateRange } from "@/lib/formatters";
-import { ATTENDANCE_STATUSES, CHANGE_REQUEST_STATUS, PAGINATION } from "@/lib/constants";
+import {
+  ATTENDANCE_STATUSES,
+  CHANGE_REQUEST_STATUS,
+  PAGINATION,
+} from "@/lib/constants";
 import logger from "@/lib/logger";
 
 const AttendanceReport = () => {
@@ -163,11 +163,17 @@ const AttendanceReport = () => {
         // Use pagination.total if available, otherwise fall back to summary.totalRecords
         // Both should be the same, but summary.totalRecords is the source of truth from aggregation
         const totalFromPagination = p.total != null ? Number(p.total) : null;
-        const totalFromSummary = responseData.summary?.totalRecords != null ? Number(responseData.summary.totalRecords) : null;
+        const totalFromSummary =
+          responseData.summary?.totalRecords != null
+            ? Number(responseData.summary.totalRecords)
+            : null;
         const totalNum = totalFromPagination ?? totalFromSummary ?? 0;
         const pageNum = p.page != null ? Number(p.page) : page;
         const limitNum = p.limit != null ? Number(p.limit) : limit;
-        const totalPagesNum = p.totalPages != null ? Number(p.totalPages) : Math.max(1, Math.ceil(totalNum / limitNum));
+        const totalPagesNum =
+          p.totalPages != null
+            ? Number(p.totalPages)
+            : Math.max(1, Math.ceil(totalNum / limitNum));
         setPagination({
           total: totalNum,
           page: pageNum,
@@ -179,8 +185,10 @@ const AttendanceReport = () => {
         showApiError(error, "Failed to fetch report");
       } finally {
         setLoading(false);
-    }
-  }, [buildParams, clearMessage, showApiError]);
+      }
+    },
+    [buildParams, clearMessage, showApiError],
+  );
 
   const handleApplyFilters = (e) => {
     e.preventDefault();
@@ -263,7 +271,8 @@ const AttendanceReport = () => {
       {/* Records Table */}
       <div className="space-y-1.5">
         <h2 className="text-base font-semibold text-foreground">
-          Attendance records{pagination.total > 0 ? ` (${pagination.total})` : ""}
+          Attendance records
+          {pagination.total > 0 ? ` (${pagination.total})` : ""}
         </h2>
         <DataTable
           columns={columns}

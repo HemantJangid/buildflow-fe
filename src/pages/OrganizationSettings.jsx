@@ -5,7 +5,7 @@ import { CURRENCIES } from "@/lib/constants";
 import PageWrapper from "@/components/PageWrapper";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FormSelect } from "@/components/ui/form-select";
+import { FormSelectCompact } from "@/components/ui/form-select";
 import { useMessage } from "@/hooks/useMessage";
 import logger from "@/lib/logger";
 import { Trash2, Plus } from "lucide-react";
@@ -170,15 +170,14 @@ const OrganizationSettings = () => {
                 </p>
               )}
             </div>
-            <FormSelect
+            <FormSelectCompact
               label="Default currency"
               name="currency"
               value={settings.general.currency}
-              onValueChange={(value) =>
-                handleGeneralChange({ target: { name: "currency", value } })
-              }
+              onChange={handleGeneralChange}
               options={CURRENCY_OPTIONS}
               placeholder="Select currency"
+              includeAll={false}
               className="max-w-[200px]"
             />
           </CardContent>

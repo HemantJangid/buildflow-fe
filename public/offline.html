@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#059669" />
+    <title>BuildFlow - Connection issue</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #0f172a;
+        color: #f1f5f9;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        text-align: center;
+      }
+      .card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 0.75rem;
+        padding: 2rem;
+        max-width: 24rem;
+        width: 100%;
+      }
+      .icon {
+        width: 3rem;
+        height: 3rem;
+        margin: 0 auto 1.25rem;
+        border-radius: 0.5rem;
+        background: rgba(5, 150, 105, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #059669;
+      }
+      .icon svg {
+        width: 1.75rem;
+        height: 1.75rem;
+        stroke: currentColor;
+        stroke-width: 2;
+        fill: none;
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+      p {
+        font-size: 0.875rem;
+        color: #94a3b8;
+        line-height: 1.5;
+        margin-bottom: 1.5rem;
+      }
+      button {
+        font-family: inherit;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #fff;
+        background: #059669;
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.625rem 1.25rem;
+        cursor: pointer;
+        width: 100%;
+      }
+      button:hover { background: #047857; }
+      button:active { background: #065f46; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12h4m14 0h-4M6 8v8m12-8v8M10 4v16m4-16v16" />
+        </svg>
+      </div>
+      <h1>BuildFlow couldn’t connect</h1>
+      <p>Check your connection and that the server is running, then try again.</p>
+      <button type="button" id="retry">Try again</button>
+    </div>
+    <script>
+      document.getElementById('retry').addEventListener('click', function () {
+        window.location.reload();
+      });
+    </script>
+  </body>
+</html>

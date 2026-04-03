@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, ClipboardList, Users, Building2, Calendar, FileText } from 'lucide-react';
+import { Clock, ClipboardList, Users, Building2, Calendar, FileText, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { attendanceAPI, authAPI, projectAPI, supervisorAPI } from '@/services/api';
+import { attendanceAPI, authAPI, projectAPI, supervisorAPI, expenseAPI, revenueAPI } from '@/services/api';
 import PageWrapper from '@/components/PageWrapper';
 import { Card, CardContent } from '@/components/ui/card';
 import DataTable from '@/components/ui/data-table';
@@ -11,16 +11,16 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { FormSelectCompact } from '@/components/ui/form-select';
 import logger from '@/lib/logger';
-import { PERMISSIONS, ROLES, RECORD_STATUS, CHANGE_REQUEST_STATUS } from '@/lib/constants';
+import { PERMISSIONS, ROLES, RECORD_STATUS, CHANGE_REQUEST_STATUS, DATE_PRESETS } from '@/lib/constants';
 
-const StatCard = ({ icon: Icon, label, value }) => (
+const StatCard = ({ icon: Icon, label, value, valueClassName }) => (
   <div className="rounded-lg border border-border bg-card p-3 flex items-center gap-3">
     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
       <Icon className="h-5 w-5" />
     </div>
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-xl font-bold text-foreground tabular-nums">{value}</p>
+      <p className={`text-xl font-bold tabular-nums ${valueClassName || 'text-foreground'}`}>{value}</p>
     </div>
   </div>
 );
@@ -52,6 +52,7 @@ const Dashboard = () => {
   });
   const [recentAttendance, setRecentAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [financialStats, setFinancialStats] = useState(null);
 
   const canViewAdminStats =
     hasPermission(PERMISSIONS.USERS_READ) && hasPermission(PERMISSIONS.ATTENDANCE_READ_ALL);
@@ -59,19 +60,25 @@ const Dashboard = () => {
   const canClockIn = hasPermission(PERMISSIONS.ATTENDANCE_CLOCK_IN);
   const canReviewChangeRequests = hasPermission(PERMISSIONS.ATTENDANCE_UPDATE);
   const canViewDailySheet = hasPermission(PERMISSIONS.ATTENDANCE_READ_ALL);
+  const canViewRevenue = hasPermission(PERMISSIONS.REVENUE_READ);
   const hasAnyPermissions = permissions && permissions.length > 0;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (canViewAdminStats) {
-          const [usersRes, projectsRes, attendanceRes, pendingRes] = await Promise.all([
+          const thisMonth = DATE_PRESETS.thisMonth();
+          const [usersRes, projectsRes, attendanceRes, pendingRes, revSummary, expSummary] = await Promise.all([
             authAPI.getAllUsers(),
             projectAPI.getAll(),
             attendanceAPI.getAllAttendance({ status: RECORD_STATUS.CLOCKED_IN }),
             canReviewChangeRequests
               ? supervisorAPI.getChangeRequests({ status: CHANGE_REQUEST_STATUS.PENDING, page: 1, limit: 1 })
               : Promise.resolve({ data: { pagination: { total: 0 } } }),
+            canViewRevenue
+              ? revenueAPI.getSummary({ startDate: thisMonth.startDate, endDate: thisMonth.endDate })
+              : Promise.resolve(null),
+            expenseAPI.getSummary({ startDate: thisMonth.startDate, endDate: thisMonth.endDate }),
           ]);
 
           const allUsers = usersRes.data?.data ?? [];
@@ -88,6 +95,13 @@ const Dashboard = () => {
             pendingChangeRequests: pendingTotal,
           });
           setRecentAttendance(attendanceData.slice(0, 5));
+          const monthRevenue = revSummary?.data?.data?.totalAmount ?? 0;
+          const monthExpenses = expSummary?.data?.data?.totalAmount ?? 0;
+          setFinancialStats({
+            revenue: monthRevenue,
+            expenses: monthExpenses,
+            netProfit: monthRevenue - monthExpenses,
+          });
         } else if (canViewProjectMembers) {
           let projectsList = projects;
           if (projects.length === 0) {
@@ -130,7 +144,7 @@ const Dashboard = () => {
     };
 
     fetchData();
-  }, [canViewAdminStats, canViewProjectMembers, canReviewChangeRequests, selectedProjectId]);
+  }, [canViewAdminStats, canViewProjectMembers, canReviewChangeRequests, canViewRevenue, selectedProjectId]);
 
   // No permissions state - custom content
   if (!loading && !hasAnyPermissions) {
@@ -197,7 +211,6 @@ const Dashboard = () => {
             ? "Your team at a glance"
             : "Your activity summary"
       }
-      loading={loading}
     >
       {/* Admin: stats + shortcuts */}
       {isAdmin && (
@@ -208,6 +221,37 @@ const Dashboard = () => {
             <StatCard icon={Clock} label="Active clock-ins" value={stats.activeClockIns} />
             <StatCard icon={ClipboardList} label="Pending change requests" value={stats.pendingChangeRequests} />
           </div>
+          {financialStats && (
+            <div className="mt-4 space-y-2">
+              <h2 className="text-sm font-semibold text-foreground">Financial (this month)</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {canViewRevenue && (
+                  <StatCard
+                    icon={TrendingUp}
+                    label="Revenue (this month)"
+                    value={`${Number(financialStats.revenue).toFixed(2)}`}
+                  />
+                )}
+                <StatCard
+                  icon={FileText}
+                  label="Expenses (this month)"
+                  value={`${Number(financialStats.expenses).toFixed(2)}`}
+                />
+                {canViewRevenue && (
+                  <StatCard
+                    icon={TrendingUp}
+                    label="Net Profit (this month)"
+                    value={`${Number(financialStats.netProfit).toFixed(2)}`}
+                    valueClassName={
+                      financialStats.netProfit >= 0
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-destructive"
+                    }
+                  />
+                )}
+              </div>
+            </div>
+          )}
           <div className="space-y-2 mt-4">
             <h2 className="text-sm font-semibold text-foreground">Shortcuts</h2>
             <div className="flex flex-wrap gap-2">
@@ -278,6 +322,7 @@ const Dashboard = () => {
               : "My recent attendance"}
         </h2>
         <DataTable
+          loading={loading}
           columns={[
             {
               key: "name",

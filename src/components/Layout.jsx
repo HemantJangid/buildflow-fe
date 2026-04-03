@@ -12,8 +12,7 @@ import { PERMISSIONS } from "@/lib/constants";
 const Layout = ({ children }) => {
   const { user, logout, hasPermission, getRoleName, permissions } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { showBanner, canInstall, promptInstall, dismissBanner } =
-    usePWAInstall();
+  const { showBanner, canInstall, promptInstall, dismissBanner } = usePWAInstall();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -113,6 +112,12 @@ const Layout = ({ children }) => {
           ],
         },
         {
+          path: "/revenue",
+          label: "Revenue",
+          icon: "trending-up",
+          permission: PERMISSIONS.REVENUE_READ,
+        },
+        {
           path: "/reports",
           label: "Reports",
           icon: "chart",
@@ -164,7 +169,7 @@ const Layout = ({ children }) => {
     const icons = {
       home: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -179,7 +184,7 @@ const Layout = ({ children }) => {
       ),
       clock: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -194,7 +199,7 @@ const Layout = ({ children }) => {
       ),
       calendar: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -209,7 +214,7 @@ const Layout = ({ children }) => {
       ),
       users: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -224,7 +229,7 @@ const Layout = ({ children }) => {
       ),
       "user-group": (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -239,7 +244,7 @@ const Layout = ({ children }) => {
       ),
       building: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -254,7 +259,7 @@ const Layout = ({ children }) => {
       ),
       clipboard: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -269,7 +274,7 @@ const Layout = ({ children }) => {
       ),
       chart: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -284,7 +289,7 @@ const Layout = ({ children }) => {
       ),
       "dollar-sign": (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -299,7 +304,7 @@ const Layout = ({ children }) => {
       ),
       shield: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -314,7 +319,7 @@ const Layout = ({ children }) => {
       ),
       settings: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -335,7 +340,7 @@ const Layout = ({ children }) => {
       ),
       table: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -348,9 +353,24 @@ const Layout = ({ children }) => {
           />
         </svg>
       ),
+      "trending-up": (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+          />
+        </svg>
+      ),
       team: (
         <svg
-          className="w-5 h-5"
+          className="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -498,43 +518,45 @@ const Layout = ({ children }) => {
         >
           <div className="flex flex-col h-full">
             {/* Logo */}
-            <div className="flex items-center gap-3 px-6 h-16 border-b border-sidebar-border">
-              <div className="w-8 h-8 bg-sidebar-primary rounded-lg flex items-center justify-center">
-                <span className="text-sidebar-primary-foreground font-bold text-lg">
+            <div className="flex items-center gap-2.5 px-4 h-12 border-b border-sidebar-border shrink-0">
+              <div className="w-7 h-7 bg-sidebar-primary rounded-md flex items-center justify-center">
+                <span className="text-sidebar-primary-foreground font-bold text-sm">
                   B
                 </span>
               </div>
-              <span className="font-semibold text-xl text-sidebar-foreground">
+              <span className="font-semibold text-base text-sidebar-foreground">
                 BuildFlow
               </span>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4 px-3">
-              {filteredGroups.map((group) => (
-                <div key={group.name} className="mb-6">
-                  <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <nav className="flex-1 overflow-y-auto py-2 px-2">
+              {filteredGroups.map((group, index) => (
+                <div key={group.name} className="mb-3">
+                  {index > 0 && <div className="border-t border-sidebar-border mb-3" />}
+                  <p className="px-2 mb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                     {group.name}
                   </p>
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {group.items.map((item) => (
                       <Link
                         key={item.path}
                         to={item.path}
                         onClick={() => setSidebarOpen(false)}
                         className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                          "flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors",
                           location.pathname === item.path
                             ? "bg-sidebar-accent text-sidebar-accent-foreground"
                             : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
                         )}
                       >
                         <span
-                          className={
+                          className={cn(
+                            "shrink-0",
                             location.pathname === item.path
                               ? "text-sidebar-primary"
                               : "text-muted-foreground"
-                          }
+                          )}
                         >
                           {getIcon(item.icon)}
                         </span>
@@ -547,18 +569,18 @@ const Layout = ({ children }) => {
             </nav>
 
             {/* User section at bottom */}
-            <div className="border-t border-sidebar-border p-3">
+            <div className="border-t border-sidebar-border p-2 shrink-0">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-sidebar-accent rounded-full flex items-center justify-center shrink-0">
-                  <span className="text-sidebar-accent-foreground font-medium text-sm">
+                <div className="w-8 h-8 bg-sidebar-accent rounded-full flex items-center justify-center shrink-0">
+                  <span className="text-sidebar-accent-foreground font-medium text-xs">
                     {user?.name?.charAt(0) || "U"}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  <p className="text-xs font-medium text-sidebar-foreground truncate">
                     {user?.name}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-[10px] text-muted-foreground truncate">
                     {getRoleName()}
                   </p>
                 </div>
@@ -580,9 +602,9 @@ const Layout = ({ children }) => {
                   className="text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-lg"
                 >
                   {theme === "dark" ? (
-                    <Sun className="w-5 h-5" />
+                    <Sun className="w-4 h-4" />
                   ) : (
-                    <Moon className="w-5 h-5" />
+                    <Moon className="w-4 h-4" />
                   )}
                 </Button>
                 <Button
@@ -595,7 +617,7 @@ const Layout = ({ children }) => {
                   className="text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-lg"
                 >
                   <svg
-                    className="w-5 h-5"
+                    className="w-4 h-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

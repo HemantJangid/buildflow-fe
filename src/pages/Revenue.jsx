@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { expenseAPI, projectAPI } from "@/services/api";
-import { PAGINATION, PERMISSIONS } from "@/lib/constants";
+import { revenueAPI, projectAPI } from "@/services/api";
+import { PAGINATION, PERMISSIONS, REVENUE_CATEGORIES, REVENUE_STATUS } from "@/lib/constants";
 import PageWrapper from "@/components/PageWrapper";
 import Modal from "@/components/Modal";
 import FormActions from "@/components/FormActions";
@@ -17,24 +17,11 @@ import logger from "@/lib/logger";
 import { formatDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
-const EXPENSE_STATUS_OPTIONS = [
-  { _id: "Draft", name: "Draft" },
-  { _id: "Submitted", name: "Submitted" },
-  { _id: "Approved", name: "Approved" },
-  { _id: "Rejected", name: "Rejected" },
-  { _id: "Void", name: "Void" },
-];
+const REVENUE_STATUS_OPTIONS = REVENUE_STATUS.map((s) => ({ _id: s, name: s }));
+const REVENUE_CATEGORY_OPTIONS = REVENUE_CATEGORIES.map((c) => ({ _id: c, name: c }));
 
-const EXPENSE_CATEGORY_OPTIONS = [
-  { _id: "Materials", name: "Materials" },
-  { _id: "Equipment", name: "Equipment" },
-  { _id: "Transport", name: "Transport" },
-  { _id: "Subsistence", name: "Subsistence" },
-  { _id: "Other", name: "Other" },
-];
-
-const Expenses = () => {
-  const [expenses, setExpenses] = useState([]);
+const Revenue = () => {
+  const [revenues, setRevenues] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
@@ -52,7 +39,7 @@ const Expenses = () => {
   });
   const [datePreset, setDatePreset] = useState("custom");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editExpense, setEditExpense] = useState(null);
+  const [editRevenue, setEditRevenue] = useState(null);
   const [summaryGroupBy, setSummaryGroupBy] = useState("project");
   const [summaryData, setSummaryData] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -60,10 +47,10 @@ const Expenses = () => {
   const { showApiError, showSuccess } = useMessage();
   const { hasPermission } = useAuth();
   const { currency: orgCurrency } = useOrganizationSettings();
-  const canCreate = hasPermission(PERMISSIONS.EXPENSES_CREATE);
-  const canUpdate = hasPermission(PERMISSIONS.EXPENSES_UPDATE);
-  const canDelete = hasPermission(PERMISSIONS.EXPENSES_DELETE);
-  const canReadAll = hasPermission(PERMISSIONS.EXPENSES_READ_ALL);
+  const canCreate = hasPermission(PERMISSIONS.REVENUE_CREATE);
+  const canUpdate = hasPermission(PERMISSIONS.REVENUE_UPDATE);
+  const canDelete = hasPermission(PERMISSIONS.REVENUE_DELETE);
+  const canRead = hasPermission(PERMISSIONS.REVENUE_READ);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -77,7 +64,7 @@ const Expenses = () => {
     loadProjects();
   }, []);
 
-  const fetchExpenses = useCallback(
+  const fetchRevenues = useCallback(
     async (page = 1, limit = PAGINATION.DEFAULT_PAGE_SIZE) => {
       setLoading(true);
       try {
@@ -87,8 +74,8 @@ const Expenses = () => {
         if (filters.endDate) params.endDate = filters.endDate;
         if (filters.category) params.category = filters.category;
         if (filters.status) params.status = filters.status;
-        const response = await expenseAPI.getAll(params);
-        setExpenses(response.data.data ?? []);
+        const response = await revenueAPI.getAll(params);
+        setRevenues(response.data.data ?? []);
         const p = response.data.pagination ?? {};
         setPagination({
           total: p.total ?? 0,
@@ -97,8 +84,8 @@ const Expenses = () => {
           totalPages: p.totalPages ?? 1,
         });
       } catch (error) {
-        logger.error("Error fetching expenses", error);
-        showApiError(error, "Failed to load expenses");
+        logger.error("Error fetching revenues", error);
+        showApiError(error, "Failed to load revenue");
       } finally {
         setLoading(false);
       }
@@ -107,8 +94,8 @@ const Expenses = () => {
   );
 
   useEffect(() => {
-    fetchExpenses(1, PAGINATION.DEFAULT_PAGE_SIZE);
-  }, [fetchExpenses]);
+    fetchRevenues(1, PAGINATION.DEFAULT_PAGE_SIZE);
+  }, [fetchRevenues]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target || {};
@@ -117,7 +104,7 @@ const Expenses = () => {
 
   const handleApplyFilters = (e) => {
     e?.preventDefault();
-    fetchExpenses(1, PAGINATION.DEFAULT_PAGE_SIZE);
+    fetchRevenues(1, PAGINATION.DEFAULT_PAGE_SIZE);
   };
 
   const resetFilters = () => {
@@ -129,38 +116,38 @@ const Expenses = () => {
       status: "",
     });
     setDatePreset("custom");
-    fetchExpenses(1, PAGINATION.DEFAULT_PAGE_SIZE);
+    fetchRevenues(1, PAGINATION.DEFAULT_PAGE_SIZE);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this expense?")) return;
+    if (!window.confirm("Delete this revenue record?")) return;
     try {
-      await expenseAPI.delete(id);
-      showSuccess("Expense deleted");
-      fetchExpenses(pagination.page, pagination.limit);
+      await revenueAPI.delete(id);
+      showSuccess("Revenue deleted");
+      fetchRevenues(pagination.page, pagination.limit);
     } catch (err) {
-      showApiError(err, "Failed to delete expense");
+      showApiError(err, "Failed to delete revenue");
     }
   };
 
   const loadSummary = useCallback(async () => {
-    if (!canReadAll) return;
+    if (!canRead) return;
     setSummaryLoading(true);
     try {
       const params = { groupBy: summaryGroupBy };
       if (filters.projectId) params.projectId = filters.projectId;
       if (filters.startDate) params.startDate = filters.startDate;
       if (filters.endDate) params.endDate = filters.endDate;
-      const res = await expenseAPI.getSummary(params);
+      const res = await revenueAPI.getSummary(params);
       setSummaryData(res.data?.data ?? null);
     } catch (err) {
-      logger.error("Error fetching expense summary", err);
+      logger.error("Error fetching revenue summary", err);
       showApiError(err, "Failed to load summary");
     } finally {
       setSummaryLoading(false);
     }
   }, [
-    canReadAll,
+    canRead,
     summaryGroupBy,
     filters.projectId,
     filters.startDate,
@@ -169,8 +156,8 @@ const Expenses = () => {
   ]);
 
   useEffect(() => {
-    if (canReadAll) loadSummary();
-  }, [canReadAll, loadSummary]);
+    if (canRead) loadSummary();
+  }, [canRead, loadSummary]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -181,12 +168,12 @@ const Expenses = () => {
       if (filters.endDate) params.endDate = filters.endDate;
       if (filters.category) params.category = filters.category;
       if (filters.status) params.status = filters.status;
-      const response = await expenseAPI.export(params);
+      const response = await revenueAPI.export(params);
       const blob = response.data;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "expenses.csv";
+      a.download = "revenue.csv";
       a.click();
       URL.revokeObjectURL(url);
       showSuccess("Export downloaded");
@@ -199,13 +186,12 @@ const Expenses = () => {
 
   const getStatusClass = (status) => {
     switch (status) {
-      case "Approved":
+      case "Received":
         return "bg-green-500/10 text-green-600 dark:text-green-400";
-      case "Rejected":
+      case "Invoiced":
+        return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
       case "Void":
         return "bg-destructive/10 text-destructive";
-      case "Submitted":
-        return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -251,11 +237,11 @@ const Expenses = () => {
       ),
     },
     {
-      key: "submittedBy",
-      label: "Submitted by",
+      key: "clientName",
+      label: "Client",
       hideOn: "sm",
       className: "text-muted-foreground",
-      render: (r) => r.submittedBy?.name ?? r.submittedBy?.email ?? "—",
+      render: (r) => r.clientName || "—",
     },
     ...(canUpdate || canDelete
       ? [
@@ -270,7 +256,7 @@ const Expenses = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setEditExpense(r)}
+                    onClick={() => setEditRevenue(r)}
                   >
                     Edit
                   </Button>
@@ -293,12 +279,12 @@ const Expenses = () => {
 
   return (
     <PageWrapper
-      title="Expenses"
-      subtitle="Project expenses and purchases"
+      title="Revenue"
+      subtitle="Project revenue and client payments"
       headerAction={
-        canReadAll || canCreate ? (
+        canRead || canCreate ? (
           <div className="flex gap-2">
-            {canReadAll && (
+            {canRead && (
               <Button
                 variant="outline"
                 size="sm"
@@ -310,7 +296,7 @@ const Expenses = () => {
             )}
             {canCreate && (
               <Button onClick={() => setShowAddModal(true)} size="sm">
-                Add expense
+                Add revenue
               </Button>
             )}
           </div>
@@ -354,7 +340,7 @@ const Expenses = () => {
                 label="Category"
                 value={filters.category}
                 onChange={handleFilterChange}
-                options={EXPENSE_CATEGORY_OPTIONS}
+                options={REVENUE_CATEGORY_OPTIONS}
                 placeholder="All"
                 includeAll
               />
@@ -365,7 +351,7 @@ const Expenses = () => {
                 label="Status"
                 value={filters.status}
                 onChange={handleFilterChange}
-                options={EXPENSE_STATUS_OPTIONS}
+                options={REVENUE_STATUS_OPTIONS}
                 placeholder="All"
                 includeAll
               />
@@ -373,7 +359,7 @@ const Expenses = () => {
           </div>
         </FilterCard>
 
-        {canReadAll && (
+        {canRead && (
           <div className="rounded-lg border border-border bg-card p-4">
             <h3 className="text-sm font-semibold mb-3">Summary</h3>
             <div className="flex flex-wrap items-end gap-4 mb-2">
@@ -389,7 +375,6 @@ const Expenses = () => {
                     { _id: "project", name: "Project" },
                     { _id: "category", name: "Category" },
                     { _id: "period", name: "Period" },
-                    { _id: "user", name: "User" },
                   ]}
                   placeholder="Project"
                   includeAll={false}
@@ -410,12 +395,13 @@ const Expenses = () => {
                     <strong className="text-foreground">
                       {summaryData.count}
                     </strong>{" "}
-                    expenses
+                    records
                   </span>
                   <span className="text-muted-foreground">
                     Amount:{" "}
                     <strong className="text-foreground">
-                      {orgCurrency} {Number(summaryData.totalAmount ?? 0).toFixed(2)}
+                      {orgCurrency}{" "}
+                      {Number(summaryData.totalAmount ?? 0).toFixed(2)}
                     </strong>
                   </span>
                 </div>
@@ -459,39 +445,39 @@ const Expenses = () => {
 
         <DataTable
           columns={columns}
-          data={expenses}
+          data={revenues}
           loading={loading}
-          emptyMessage="No expenses found. Add an expense or adjust filters."
+          emptyMessage="No revenue records found. Add a revenue entry or adjust filters."
           rowKey={(r) => r._id}
           pagination={{ ...pagination }}
-          onPageChange={(page) => fetchExpenses(page, pagination.limit)}
+          onPageChange={(page) => fetchRevenues(page, pagination.limit)}
         />
       </div>
 
       {showAddModal && (
-        <ExpenseFormModal
+        <RevenueFormModal
           projects={projects}
           defaultCurrency={orgCurrency}
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
             setShowAddModal(false);
-            showSuccess("Expense added");
-            fetchExpenses(pagination.page, pagination.limit);
+            showSuccess("Revenue added");
+            fetchRevenues(pagination.page, pagination.limit);
           }}
           onError={showApiError}
         />
       )}
-      {editExpense && (
-        <ExpenseFormModal
-          expenseId={editExpense._id}
-          initialData={editExpense}
+      {editRevenue && (
+        <RevenueFormModal
+          revenueId={editRevenue._id}
+          initialData={editRevenue}
           projects={projects}
           defaultCurrency={orgCurrency}
-          onClose={() => setEditExpense(null)}
+          onClose={() => setEditRevenue(null)}
           onSuccess={() => {
-            setEditExpense(null);
-            showSuccess("Expense updated");
-            fetchExpenses(pagination.page, pagination.limit);
+            setEditRevenue(null);
+            showSuccess("Revenue updated");
+            fetchRevenues(pagination.page, pagination.limit);
           }}
           onError={showApiError}
         />
@@ -500,8 +486,8 @@ const Expenses = () => {
   );
 };
 
-function ExpenseFormModal({
-  expenseId,
+function RevenueFormModal({
+  revenueId,
   initialData,
   projects,
   defaultCurrency = "USD",
@@ -509,7 +495,7 @@ function ExpenseFormModal({
   onSuccess,
   onError,
 }) {
-  const isEdit = Boolean(expenseId);
+  const isEdit = Boolean(revenueId);
   const projectIdFromData =
     initialData?.projectId?._id ?? initialData?.projectId;
   const [formData, setFormData] = useState({
@@ -522,8 +508,8 @@ function ExpenseFormModal({
       ? String(initialData.date).slice(0, 10)
       : new Date().toISOString().slice(0, 10),
     status: initialData?.status ?? "Draft",
-    vendor: initialData?.vendor ?? "",
-    receiptNumber: initialData?.receiptNumber ?? "",
+    clientName: initialData?.clientName ?? "",
+    invoiceNumber: initialData?.invoiceNumber ?? "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -546,19 +532,19 @@ function ExpenseFormModal({
         description: formData.description || undefined,
         date: formData.date,
         status: formData.status,
-        vendor: formData.vendor || undefined,
-        receiptNumber: formData.receiptNumber || undefined,
+        clientName: formData.clientName || undefined,
+        invoiceNumber: formData.invoiceNumber || undefined,
       };
       if (isEdit) {
-        await expenseAPI.update(expenseId, payload);
+        await revenueAPI.update(revenueId, payload);
       } else {
-        await expenseAPI.create(payload);
+        await revenueAPI.create(payload);
       }
       onSuccess();
     } catch (err) {
       onError(
         err,
-        isEdit ? "Failed to update expense" : "Failed to add expense",
+        isEdit ? "Failed to update revenue" : "Failed to add revenue",
       );
     } finally {
       setSubmitting(false);
@@ -574,7 +560,7 @@ function ExpenseFormModal({
     <Modal
       open={true}
       onClose={onClose}
-      title={isEdit ? "Edit expense" : "Add expense"}
+      title={isEdit ? "Edit revenue" : "Add revenue"}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-2.5">
@@ -621,7 +607,7 @@ function ExpenseFormModal({
             label="Category"
             value={formData.category}
             onChange={handleChange}
-            options={EXPENSE_CATEGORY_OPTIONS}
+            options={REVENUE_CATEGORY_OPTIONS}
             placeholder="Select category"
             includeAll={false}
           />
@@ -630,23 +616,23 @@ function ExpenseFormModal({
             label="Status"
             value={formData.status}
             onChange={handleChange}
-            options={EXPENSE_STATUS_OPTIONS}
+            options={REVENUE_STATUS_OPTIONS}
             placeholder="Select status"
             includeAll={false}
           />
           <FormFieldCompact
-            name="vendor"
-            label="Vendor"
-            value={formData.vendor}
+            name="clientName"
+            label="Client Name"
+            value={formData.clientName}
             onChange={handleChange}
-            placeholder="Vendor name"
+            placeholder="Client or company name"
           />
           <FormFieldCompact
-            name="receiptNumber"
-            label="Receipt Number"
-            value={formData.receiptNumber}
+            name="invoiceNumber"
+            label="Invoice Number"
+            value={formData.invoiceNumber}
             onChange={handleChange}
-            placeholder="e.g. RCP-001"
+            placeholder="e.g. INV-001"
           />
           <div className="sm:col-span-2 space-y-1.5">
             <label className="text-xs text-muted-foreground">Description</label>
@@ -662,7 +648,7 @@ function ExpenseFormModal({
         </div>
         <FormActions
           onCancel={onClose}
-          submitLabel={isEdit ? "Update expense" : "Save expense"}
+          submitLabel={isEdit ? "Update revenue" : "Save revenue"}
           loading={submitting}
           loadingLabel="Saving…"
         />
@@ -671,4 +657,4 @@ function ExpenseFormModal({
   );
 }
 
-export default Expenses;
+export default Revenue;

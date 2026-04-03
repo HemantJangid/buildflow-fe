@@ -4,8 +4,8 @@ import PageWrapper from "@/components/PageWrapper";
 import Modal from "@/components/Modal";
 import FormActions from "@/components/FormActions";
 import FormSection from "@/components/FormSection";
-import { FormField } from "@/components/ui/form-field";
-import { FormSelect } from "@/components/ui/form-select";
+import { FormFieldCompact } from "@/components/ui/form-field";
+import { FormSelectCompact } from "@/components/ui/form-select";
 import { FormSearchByInput } from "@/components/ui/form-search-by-input";
 import {
   Select,
@@ -58,6 +58,40 @@ const Users = () => {
   const [filterRoleId, setFilterRoleId] = useState(ALL_VALUE);
   const [filterCategory, setFilterCategory] = useState(ALL_VALUE);
   const [filterStatus, setFilterStatus] = useState(ALL_VALUE);
+
+  // Debounce search term so fetch runs only after user stops typing (300ms)
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  const searchInputRef = useRef(null);
+  const prevLoadingRef = useRef(loading);
+  const hadFocusRef = useRef(false);
+  const initialLoadCompleteRef = useRef(false);
+  useEffect(() => {
+    const transitionToFalse = prevLoadingRef.current === true && loading === false;
+    const transitionToTrue = prevLoadingRef.current === false && loading === true;
+
+    if (transitionToFalse) {
+      if (initialLoadCompleteRef.current) {
+        const id = setTimeout(() => searchInputRef.current?.focus(), 0);
+        prevLoadingRef.current = loading;
+        return () => clearTimeout(id);
+      }
+      initialLoadCompleteRef.current = true;
+    }
+    if (transitionToTrue && hadFocusRef.current) {
+      const id = setTimeout(() => searchInputRef.current?.focus(), 0);
+      prevLoadingRef.current = loading;
+      return () => clearTimeout(id);
+    }
+    prevLoadingRef.current = loading;
+    if (loading === false) {
+      hadFocusRef.current = document.activeElement === searchInputRef.current;
+    }
+  }, [loading]);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -113,26 +147,10 @@ const Users = () => {
     [],
   );
 
-  const getFilterParams = useCallback(
-    () => ({
-      search: searchTerm.trim() || undefined,
-      searchBy,
-      roleId:
-        filterRoleId && filterRoleId !== ALL_VALUE ? filterRoleId : undefined,
-      category:
-        filterCategory && filterCategory !== ALL_VALUE
-          ? filterCategory
-          : undefined,
-      status:
-        filterStatus && filterStatus !== ALL_VALUE ? filterStatus : undefined,
-    }),
-    [searchTerm, searchBy, filterRoleId, filterCategory, filterStatus],
-  );
-
-  // Apply filters: debounce 200ms when any filter/search changes
-  useEffect(() => {
-    const params = {
-      search: searchTerm.trim() || undefined,
+  const getFilterParams = useCallback(() => {
+    const trimmed = searchTerm.trim();
+    return {
+      search: trimmed.length > 3 ? trimmed : undefined,
       searchBy,
       roleId:
         filterRoleId && filterRoleId !== ALL_VALUE ? filterRoleId : undefined,
@@ -143,14 +161,55 @@ const Users = () => {
       status:
         filterStatus && filterStatus !== ALL_VALUE ? filterStatus : undefined,
     };
-    const hasFilters =
-      params.search || params.roleId || params.category || params.status;
-    const t = setTimeout(
-      () => fetchUsers(1, pagination.limit, params),
-      hasFilters ? 200 : 0,
-    );
-    return () => clearTimeout(t);
   }, [searchTerm, searchBy, filterRoleId, filterCategory, filterStatus]);
+
+  // Search only applies when > 3 chars. Only refetch when effective search or other filters actually change.
+  const lastFetchStateRef = useRef(null);
+  useEffect(() => {
+    const trimmed = debouncedSearchTerm.trim();
+    const effectiveSearch = trimmed.length > 3 ? trimmed : undefined;
+    const nextState = {
+      search: effectiveSearch,
+      searchBy,
+      filterRoleId,
+      filterCategory,
+      filterStatus,
+    };
+    if (
+      lastFetchStateRef.current !== null &&
+      lastFetchStateRef.current.search === nextState.search &&
+      lastFetchStateRef.current.searchBy === nextState.searchBy &&
+      lastFetchStateRef.current.filterRoleId === nextState.filterRoleId &&
+      lastFetchStateRef.current.filterCategory === nextState.filterCategory &&
+      lastFetchStateRef.current.filterStatus === nextState.filterStatus
+    ) {
+      return;
+    }
+    lastFetchStateRef.current = nextState;
+
+    const params = {
+      searchBy,
+      roleId:
+        filterRoleId && filterRoleId !== ALL_VALUE ? filterRoleId : undefined,
+      category:
+        filterCategory && filterCategory !== ALL_VALUE
+          ? filterCategory
+          : undefined,
+      status:
+        filterStatus && filterStatus !== ALL_VALUE ? filterStatus : undefined,
+    };
+    if (effectiveSearch != null && effectiveSearch !== "")
+      params.search = effectiveSearch;
+    fetchUsers(1, pagination.limit, params);
+  }, [
+    debouncedSearchTerm,
+    searchBy,
+    filterRoleId,
+    filterCategory,
+    filterStatus,
+    fetchUsers,
+    pagination.limit,
+  ]);
 
   const clearFilters = useCallback(() => {
     setSearchTerm("");
@@ -381,7 +440,6 @@ const Users = () => {
     <PageWrapper
       title="User management"
       subtitle="Create and manage users, assign roles (Worker, Supervisor, Admin)"
-      loading={loading && users.length === 0}
       headerAction={
         <Button onClick={() => setShowForm(!showForm)}>
           {showForm ? "Cancel" : "Add user"}
@@ -395,9 +453,9 @@ const Users = () => {
         size="xl"
       >
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              <FormFieldCompact
                 name="name"
                 label="Name"
                 value={formData.name}
@@ -405,7 +463,7 @@ const Users = () => {
                 required
                 error={fieldErrors.name}
               />
-              <FormField
+              <FormFieldCompact
                 name="email"
                 label="Email"
                 type="email"
@@ -416,7 +474,7 @@ const Users = () => {
                 error={fieldErrors.email}
               />
               {!editingUser && (
-                <FormField
+                <FormFieldCompact
                   name="password"
                   label="Password"
                   type="password"
@@ -429,7 +487,7 @@ const Users = () => {
               <Popover open={rolePopoverOpen} onOpenChange={setRolePopoverOpen}>
                 <PopoverAnchor asChild>
                   <div
-                    className="space-y-2"
+                    className="space-y-1.5"
                     onMouseEnter={
                       editingUser?.isOrgOwner
                         ? () => {
@@ -452,15 +510,16 @@ const Users = () => {
                         : undefined
                     }
                   >
-                    <FormSelect
+                    <FormSelectCompact
                       name="roleId"
                       label="Role"
                       value={formData.roleId}
-                      onValueChange={(v) =>
-                        setFormData({ ...formData, roleId: v })
+                      onChange={(e) =>
+                        setFormData({ ...formData, roleId: e.target.value })
                       }
                       options={roles}
                       placeholder="Select a role"
+                      includeAll={false}
                       required
                       disabled={!!editingUser?.isOrgOwner}
                       error={fieldErrors.roleId}
@@ -487,16 +546,17 @@ const Users = () => {
                   </PopoverContent>
                 )}
               </Popover>
-              <FormSelect
+              <FormSelectCompact
                 name="category"
                 label="Category"
                 value={formData.category}
-                onValueChange={(v) => setFormData({ ...formData, category: v })}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 options={USER_CATEGORIES.map((c) => ({ _id: c, name: c }))}
                 placeholder="Select category (optional)"
+                includeAll={false}
                 error={fieldErrors.category}
               />
-              <FormField
+              <FormFieldCompact
                 name="minWorkHours"
                 label="Min Work Hours (per day)"
                 type="number"
@@ -510,8 +570,8 @@ const Users = () => {
             </div>
 
             <FormSection title="Payroll & metadata (optional)" showBorder>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                <FormFieldCompact
                   name="dailyRate"
                   label="Daily Rate"
                   type="number"
@@ -519,7 +579,7 @@ const Users = () => {
                   onChange={handleChange}
                   placeholder="0.00"
                 />
-                <FormField
+                <FormFieldCompact
                   name="visaCost"
                   label="Visa Cost"
                   type="number"
@@ -527,14 +587,14 @@ const Users = () => {
                   onChange={handleChange}
                   placeholder="0.00"
                 />
-                <FormField
+                <FormFieldCompact
                   name="visaExpiry"
                   label="Visa Expiry"
                   type="date"
                   value={formData.visaExpiry}
                   onChange={handleChange}
                 />
-                <FormField
+                <FormFieldCompact
                   name="transportCost"
                   label="Transport Cost (per day)"
                   type="number"
@@ -542,7 +602,7 @@ const Users = () => {
                   onChange={handleChange}
                   placeholder="0.00"
                 />
-                <FormField
+                <FormFieldCompact
                   name="fixedExtras"
                   label="Fixed Extras"
                   type="number"
@@ -599,7 +659,10 @@ const Users = () => {
                   selectPlaceholder="Name"
                   inputName="search"
                   inputValue={searchTerm}
-                  onInputChange={(e) => setSearchTerm(e.target.value)}
+                  onInputChange={(e) => {
+                    setSearchTerm(e.target.value);
+                  }}
+                  inputRef={searchInputRef}
                   inputPlaceholder={
                     searchBy === "email"
                       ? "Search by email..."
@@ -620,31 +683,31 @@ const Users = () => {
                   }
                 />
               </div>
-              <FormSelect
+              <FormSelectCompact
+                name="filterRoleId"
                 label="Role"
                 value={filterRoleId}
-                onValueChange={setFilterRoleId}
+                onChange={(e) => setFilterRoleId(e.target.value || ALL_VALUE)}
                 options={[{ _id: ALL_VALUE, name: "All roles" }, ...roles]}
-                placeholder="All roles"
+                includeAll={false}
                 className="w-full"
               />
-              <FormSelect
+              <FormSelectCompact
+                name="filterCategory"
                 label="Category"
                 value={filterCategory}
-                onValueChange={setFilterCategory}
-                options={[
-                  { _id: ALL_VALUE, name: "All" },
-                  ...USER_CATEGORIES.map((c) => ({ _id: c, name: c })),
-                ]}
-                placeholder="All"
+                onChange={(e) => setFilterCategory(e.target.value || ALL_VALUE)}
+                options={[{ _id: ALL_VALUE, name: "All" }, ...USER_CATEGORIES.map((c) => ({ _id: c, name: c }))]}
+                includeAll={false}
                 className="w-full"
               />
-              <FormSelect
+              <FormSelectCompact
+                name="filterStatus"
                 label="Status"
                 value={filterStatus}
-                onValueChange={setFilterStatus}
+                onChange={(e) => setFilterStatus(e.target.value || ALL_VALUE)}
                 options={STATUS_OPTIONS}
-                placeholder="All"
+                includeAll={false}
                 className="w-full"
               />
             </div>

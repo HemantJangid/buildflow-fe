@@ -33,11 +33,12 @@ export const FormSearchByInput = ({
   className,
   labelClassName,
   selectWidth = "w-[6.5rem]",
+  inputRef,
 }) => {
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn(className)}>
       {label != null && label !== "" && (
-        <Label className={cn(labelClassName)}>
+        <Label className={cn("text-xs text-muted-foreground block mb-2", labelClassName)}>
           {label}
           {required && <span className="text-destructive ml-0.5">*</span>}
         </Label>
@@ -76,6 +77,7 @@ export const FormSearchByInput = ({
         </Select>
         <div className="min-w-0 flex-1">
           <Input
+            ref={inputRef}
             name={inputName}
             type="text"
             value={inputValue}

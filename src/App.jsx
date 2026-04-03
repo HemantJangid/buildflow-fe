@@ -25,6 +25,7 @@ const AttendanceReport = lazy(() => import("./pages/AttendanceReport"));
 const DailyAttendanceSheet = lazy(() => import("./pages/DailyAttendanceSheet"));
 const ChangeRequests = lazy(() => import("./pages/ChangeRequests"));
 const Expenses = lazy(() => import("./pages/Expenses"));
+const Revenue = lazy(() => import("./pages/Revenue"));
 const OrganizationSettings = lazy(() => import("./pages/OrganizationSettings"));
 
 function App() {
@@ -108,6 +109,15 @@ function App() {
                     ]}
                   >
                     <Expenses />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/revenue"
+                element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.REVENUE_READ}>
+                    <Revenue />
                   </ProtectedRoute>
                 }
               />

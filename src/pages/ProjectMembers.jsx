@@ -282,14 +282,12 @@ const ProjectMembers = () => {
   ];
 
 
-  const projectsLoading = loading && projects.length === 0;
   const membersLoading = selectedProjectId && loading;
 
   return (
     <PageWrapper
       title="My project members"
       subtitle="People in your projects and their attendance"
-      loading={projectsLoading}
     >
       <div className="space-y-4">
         <div className="flex flex-wrap items-end gap-3">
@@ -375,6 +373,7 @@ const ProjectMembers = () => {
                     Attendance{attendancePagination.total > 0 ? ` (${attendancePagination.total})` : ""}
                   </h2>
                   <DataTable
+                    loading={loading}
                     columns={attendanceColumns}
                     data={attendance}
                     emptyMessage="No attendance records found."

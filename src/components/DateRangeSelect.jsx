@@ -61,23 +61,18 @@ const DateRangeSelect = ({
   };
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end md:items-start",
-        className,
-      )}
-    >
+    <div className={cn("flex flex-wrap items-end gap-3", className)}>
       {/* Preset Dropdown */}
-      <div className="w-full sm:w-auto space-y-1">
+      <div>
         {showLabels && (
-          <Label className="text-sm font-medium">Date range</Label>
+          <Label className="text-xs text-muted-foreground block mb-2">Date range</Label>
         )}
         <Select
           value={currentPreset}
           onValueChange={handlePresetChange}
           disabled={disabled}
         >
-          <SelectTrigger className="h-9 w-full sm:w-[140px]">
+          <SelectTrigger className="h-9 w-[140px]">
             <SelectValue placeholder="Select range" />
           </SelectTrigger>
           <SelectContent>
@@ -92,26 +87,26 @@ const DateRangeSelect = ({
       </div>
 
       {/* From Date */}
-      <div className="w-full sm:w-auto space-y-1">
-        {showLabels && <Label className="text-sm font-medium">From</Label>}
+      <div>
+        {showLabels && <Label className="text-xs text-muted-foreground block mb-2">From</Label>}
         <DatePicker
           value={startDate}
           onChange={(v) => handleCustomDateChange("start", v)}
           placeholder="Start date"
           disabled={disabled}
-          className="w-full sm:w-[140px]"
+          className="w-[140px]"
         />
       </div>
 
       {/* To Date */}
-      <div className="w-full sm:w-auto space-y-1">
-        {showLabels && <Label className="text-sm font-medium">To</Label>}
+      <div>
+        {showLabels && <Label className="text-xs text-muted-foreground block mb-2">To</Label>}
         <DatePicker
           value={endDate}
           onChange={(v) => handleCustomDateChange("end", v)}
           placeholder="End date"
           disabled={disabled}
-          className="w-full sm:w-[140px]"
+          className="w-[140px]"
         />
       </div>
     </div>

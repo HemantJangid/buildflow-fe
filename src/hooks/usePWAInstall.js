@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const PWA_BANNER_DISMISSED_KEY = 'buildflow-pwa-banner-dismissed';
+const PWA_INSTALLED_KEY = 'buildflow-pwa-installed';
 
 /**
  * Hook to support a custom "Install app" banner for the PWA.
@@ -11,33 +12,56 @@ const PWA_BANNER_DISMISSED_KEY = 'buildflow-pwa-banner-dismissed';
  */
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+
+  const isRunningStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true ||
+    document.referrer.includes('android-app://');
+
+  const [isInstalled, setIsInstalled] = useState(() => {
+    if (isRunningStandalone) return true;
+    try {
+      return localStorage.getItem(PWA_INSTALLED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
   const [bannerDismissed, setBannerDismissed] = useState(() => {
     try {
-      return sessionStorage.getItem(PWA_BANNER_DISMISSED_KEY) === '1';
+      return localStorage.getItem(PWA_BANNER_DISMISSED_KEY) === '1';
     } catch {
       return false;
     }
   });
 
   useEffect(() => {
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true ||
-      document.referrer.includes('android-app://');
-    if (standalone) {
+    if (isRunningStandalone) {
       setIsInstalled(true);
+      try {
+        localStorage.setItem(PWA_INSTALLED_KEY, '1');
+      } catch {}
       return;
+    }
+
+    // Use prompt captured by early script in index.html if we missed the event
+    if (window.__buildflowDeferredPrompt) {
+      setDeferredPrompt(window.__buildflowDeferredPrompt);
     }
 
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
+      window.__buildflowDeferredPrompt = e;
       setDeferredPrompt(e);
     };
 
     const handleAppInstalled = () => {
+      window.__buildflowDeferredPrompt = null;
       setDeferredPrompt(null);
       setIsInstalled(true);
+      try {
+        localStorage.setItem(PWA_INSTALLED_KEY, '1');
+      } catch {}
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -50,12 +74,18 @@ export function usePWAInstall() {
   }, []);
 
   const promptInstall = useCallback(async () => {
-    if (!deferredPrompt) return false;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    // Prefer state; fall back to early-captured global (e.g. if event fired before hook mounted)
+    const prompt = deferredPrompt || window.__buildflowDeferredPrompt;
+    if (!prompt) return false;
+    prompt.prompt();
+    const { outcome } = await prompt.userChoice;
     if (outcome === 'accepted') {
+      window.__buildflowDeferredPrompt = null;
       setDeferredPrompt(null);
       setIsInstalled(true);
+      try {
+        localStorage.setItem(PWA_INSTALLED_KEY, '1');
+      } catch {}
       return true;
     }
     return false;
@@ -64,7 +94,7 @@ export function usePWAInstall() {
   const dismissBanner = useCallback(() => {
     setBannerDismissed(true);
     try {
-      sessionStorage.setItem(PWA_BANNER_DISMISSED_KEY, '1');
+      localStorage.setItem(PWA_BANNER_DISMISSED_KEY, '1');
     } catch {}
   }, []);
 
